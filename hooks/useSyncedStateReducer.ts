@@ -1,23 +1,25 @@
+import { deepClone } from "fast-json-patch";
 import { applyPatch, compare } from "fast-json-patch/index.mjs";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ServerConnection, ServerConnectionEvent } from "./ServerConnection";
 import { useInstance } from "./useInstance";
-import { deepClone } from "fast-json-patch";
-import { SyncedStateConfig } from "./types";
+import { Reducer, SyncedStateConfig } from "./types";
 
-export const useSyncedState = <S extends {}, M extends {}>(
-  config: SyncedStateConfig<S, M>
-): [S, (s: S) => void] => {
-  const [internalState, setInternalState] = useState(config.initialState);
+export const useSyncedStateReducer = <S extends {}, M extends {}, A extends {}>(
+  config: SyncedStateConfig<S, M>,
+  reducer: Reducer<S, A>
+): [S, (action: A) => void] => {
+  const [internalState, setInternalState] = useState<S>(config.initialState);
   const stateRef = useRef<S>(internalState);
   stateRef.current = internalState;
 
   const connection = useInstance(() => new ServerConnection());
   const metadata = config.metadata || ({} as M);
 
-  const setState = (nextState: S) => {
+  const dispatch = (action: A) => {
     const prevState = deepClone(internalState);
-    const patch = compare(prevState, nextState);
+    const nextState = reducer(prevState, action);
+    const patch = compare(internalState, nextState);
 
     setInternalState(nextState);
 
@@ -44,8 +46,7 @@ export const useSyncedState = <S extends {}, M extends {}>(
             }
 
             case "initial_state": {
-              const state = JSON.parse(event.event.state);
-              setInternalState(state);
+              setInternalState(event.event.state);
               break;
             }
 
@@ -64,5 +65,5 @@ export const useSyncedState = <S extends {}, M extends {}>(
     return () => connection.removeEventListener(listener);
   }, []);
 
-  return [internalState, setState];
+  return [internalState, dispatch];
 };

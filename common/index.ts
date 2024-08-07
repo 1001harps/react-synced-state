@@ -1,4 +1,4 @@
-import { Operation } from "fast-json-patch";
+import { Operation } from "fast-json-patch/index.mjs";
 
 export type ServerAction = {
   type: "state_change";
