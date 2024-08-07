@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { applyPatch } from "fast-json-patch";
+import { applyPatch } from "fast-json-patch/index.mjs";
 import { IncomingMessage } from "http";
 import { WebSocket, WebSocketServer } from "ws";
 import { ServerAction, ServerEvent } from "../common";
@@ -102,7 +102,11 @@ const handleConnection = (
   });
 };
 
-export const server = () => {
+interface Server {
+  start(port: number): void;
+}
+
+export const server = (): Server => {
   const connections: Connection[] = [];
 
   const rooms: Record<string, {}> = {};

@@ -53,22 +53,20 @@ class ServerConnection extends EventListener<ServerConnectionEvent> {
   }
 }
 
+export interface SyncedStateConfig<S, M> {
+  initialState: S;
+  url: string;
+  roomId: string;
+  metadata?: M;
+}
+
 export const useSyncedState = <S extends {}, M extends {}>(
-  initialState: S,
-  metadata?: M
-): [S, (s: S) => void, (roomId: string) => void, boolean] => {
-  const [internalState, setInternalState] = useState(initialState);
-  const [active, setActive] = useState(false);
+  config: SyncedStateConfig<S, M>
+): [S, (s: S) => void] => {
+  const [internalState, setInternalState] = useState(config.initialState);
 
   const connection = useInstance(() => new ServerConnection());
-
-  if (!metadata) metadata = {} as M;
-
-  const open = (roomId: string) => {
-    connection.open(metadata, initialState, roomId);
-  };
-
-  useEffect(() => {}, [internalState]);
+  const metadata = config.metadata || ({} as M);
 
   const setState = (s: S) => {
     var patch = compare(internalState, s);
@@ -86,7 +84,6 @@ export const useSyncedState = <S extends {}, M extends {}>(
       console.log("event", event);
       switch (event.type) {
         case "open": {
-          setActive(true);
           break;
         }
 
@@ -120,8 +117,10 @@ export const useSyncedState = <S extends {}, M extends {}>(
 
     connection.addEventListener(listener);
 
+    connection.open(metadata, config.initialState, config.roomId);
+
     return () => connection.removeEventListener(listener);
   }, []);
 
-  return [internalState, setState, open, active];
+  return [internalState, setState];
 };
