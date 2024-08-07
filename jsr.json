@@ -1,0 +1,9 @@
+{
+  "name": "@9h/react-synced-state",
+  "version": "0.0.1",
+  "exports": {
+    ".": "./common/index.ts",
+    "./server": "./server/index.ts",
+    "./hooks": "./hooks/index.ts"
+  }
+}
