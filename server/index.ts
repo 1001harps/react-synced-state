@@ -3,10 +3,19 @@ import { WebSocketServer } from "ws";
 import { handleWebSocketConnection } from "./handlers";
 import { Room } from "./room";
 import { Connection } from "./types";
+import winston from "winston";
 
 interface Server {
   start(port: number): void;
 }
+
+const { combine, timestamp, json } = winston.format;
+
+const logger = winston.createLogger({
+  transports: [new winston.transports.Console()],
+  format: combine(timestamp(), json()),
+  level: "info",
+});
 
 export const server = (): Server => {
   const connections: Connection[] = [];
@@ -14,15 +23,25 @@ export const server = (): Server => {
   const rooms: Record<string, Room> = {};
 
   const start = (port: number) => {
-    const server = createServer();
+    const server = createServer((req, res) => {
+      const { method, url } = req;
+      const { statusCode, statusMessage } = res;
+
+      if (statusCode >= 400) {
+        logger.error({ method, url, statusCode, statusMessage });
+      } else {
+        logger.info({ method, url, statusCode, statusMessage });
+      }
+    });
+
     const wss = new WebSocketServer({ server });
 
     wss.on("connection", (ws, request) =>
-      handleWebSocketConnection(ws, request, connections, rooms)
+      handleWebSocketConnection(ws, request, logger, connections, rooms)
     );
 
     server.on("request", (request, response) => {
-      const { method, url, headers } = request;
+      const { method, url } = request;
 
       if (method === "GET" && url === "/debug") {
         response.statusCode = 200;
@@ -32,7 +51,9 @@ export const server = (): Server => {
       }
     });
 
-    server.listen(port);
+    server.listen(port, () =>
+      logger.info(`[server]: Server is running at http://localhost:${port}`)
+    );
   };
 
   return {

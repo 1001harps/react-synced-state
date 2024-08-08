@@ -4,10 +4,12 @@ import { WebSocket } from "ws";
 import { ServerAction, ServerEvent } from "../common";
 import { Connection } from "./types";
 import { Room } from "./room";
+import { Logger } from "winston";
 
 export const handleWebSocketConnection = (
   ws: WebSocket,
   request: IncomingMessage,
+  logger: Logger,
   connections: Connection[],
   rooms: Record<string, Room>
 ) => {
@@ -53,7 +55,7 @@ export const handleWebSocketConnection = (
     });
   };
 
-  ws.on("error", console.error);
+  ws.on("error", logger.error);
 
   ws.on("message", function message(data) {
     const message = JSON.parse(data.toString()) as ServerAction;
@@ -62,13 +64,7 @@ export const handleWebSocketConnection = (
       case "state_change": {
         if (!roomId) throw "missing key";
 
-        console.log("patch", message.patch);
-
-        console.log("before", rooms[roomId].getState());
-
         rooms[roomId].patchState(message.patch);
-
-        console.log("after", rooms[roomId].getState());
 
         const event: ServerEvent = {
           type: "state_change",
