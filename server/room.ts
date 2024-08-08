@@ -1,6 +1,8 @@
 import { applyPatch, Operation } from "fast-json-patch/index.mjs";
 
 export class Room {
+  created = Date.now();
+
   private state = {};
 
   setState(state: {}) {

@@ -51,6 +51,17 @@ export const server = (): Server => {
       }
     });
 
+    // clean up room state periodically
+    setInterval(() => {
+      const roomsInUse = new Set([...connections.map((x) => x.roomId)]);
+
+      Object.keys(rooms).forEach((id) => {
+        if (!(id in roomsInUse)) {
+          delete rooms[id];
+        }
+      });
+    }, 5000);
+
     server.listen(port, () =>
       logger.info(`[server]: Server is running at http://localhost:${port}`)
     );
