@@ -2,6 +2,7 @@ import { ClientMessage, JsonValue, ServerEvent } from "../common/index.ts";
 import { Room } from "./room.ts";
 import { Connection } from "./types.ts";
 
+/** Options for configuring the sync server. */
 export interface ServerOptions {
   roomTtlMs?: number;
   onRoomMembershipChange?: (roomId: string, members: number) => void;
@@ -40,6 +41,7 @@ const send = (socket: WebSocket, event: ServerEvent) => {
   if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(event));
 };
 
+/** Creates a request handler that manages rooms and syncs state over WebSockets. */
 export const createHandler = (
   options: ServerOptions = {},
 ): (request: Request) => Response => {

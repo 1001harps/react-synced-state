@@ -1,10 +1,17 @@
+/**
+ * WebSocket server that syncs room state between connected clients.
+ *
+ * @module
+ */
 import { createHandler, ServerOptions } from "./handlers.ts";
 
+/** A running sync server. */
 export interface Server {
   start(port?: number): void;
   shutdown(): Promise<void>;
 }
 
+/** Creates a sync server using the provided options. */
 export const server = (options: ServerOptions = {}): Server => {
   const handler = createHandler(options);
   let instance: ReturnType<typeof Deno.serve> | undefined;

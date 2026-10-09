@@ -2,6 +2,7 @@ import { applyPatch, Operation } from "npm:fast-json-patch@^3.1.1/index.mjs";
 import { JsonValue } from "../common/index.ts";
 import { Connection } from "./types.ts";
 
+/** Holds the synced state for a room and tracks its connected members. */
 export class Room {
   readonly members = new Set<Connection>();
   private state: JsonValue | undefined;

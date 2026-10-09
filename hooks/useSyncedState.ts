@@ -10,6 +10,7 @@ const initialConnection = <M>(): SyncedConnection<M> => ({
   members: [],
 });
 
+/** Syncs local state with a server room, applying updates from other clients. */
 export const useSyncedState = <S extends {}, M extends {}>(
   config: SyncedStateConfig<S, M>,
 ): [S, (state: S) => void, SyncedConnection<M>] => {

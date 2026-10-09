@@ -15,6 +15,7 @@ const initialConnection = <M>(): SyncedConnection<M> => ({
   members: [],
 });
 
+/** Syncs reducer-driven state with a server room, applying updates from other clients. */
 export const useSyncedStateReducer = <
   S extends {},
   M extends {},
