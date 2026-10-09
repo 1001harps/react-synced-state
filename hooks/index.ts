@@ -1,2 +1,8 @@
-export { useSyncedState } from "./useSyncedState";
-export { useSyncedStateReducer } from "./useSyncedStateReducer";
+export { useSyncedState } from "./useSyncedState.ts";
+export { useSyncedStateReducer } from "./useSyncedStateReducer.ts";
+export type {
+  ConnectionStatus,
+  SyncedConnection,
+  SyncedMember,
+  SyncedStateConfig,
+} from "./types.ts";

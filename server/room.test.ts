@@ -1,273 +1,40 @@
-import { compare, Operation } from "fast-json-patch/index.mjs";
+import { Room } from "./room.ts";
 
-import { Room } from "./room";
-
-const getPatch = (s1: any, s2: any) => {
-  return compare(s1, s2);
+const assertEquals = (actual: unknown, expected: unknown) => {
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    throw new Error(
+      `Expected ${JSON.stringify(expected)}, received ${
+        JSON.stringify(actual)
+      }`,
+    );
+  }
 };
 
-describe("Room", () => {
-  test("patches basic object", () => {
-    // setup
-    const initialState = { test: 1 };
-    const room = new Room();
-    room.setState(initialState);
-    const expected = { test: 2 };
-
-    // apply patch
-    const s = room.getState();
-    const patch = getPatch(initialState, expected);
-    room.patchState(patch);
-
-    // assert patch worked
-    expect(s).toMatchObject(expected);
+Deno.test("Room initializes state and applies JSON patches", () => {
+  const room = new Room();
+  room.setState({
+    steps: [false, false],
+    synth: { volume: 0.5 },
   });
 
-  test("patches nested properties", () => {
-    // setup
-    const initialState = {
-      test: [false, false, false],
-      test2: [
-        {
-          active: false,
-          value: 123,
-        },
-      ],
-    };
-    const room = new Room();
-    room.setState(initialState);
-    const expected = {
-      test: [false, true, false],
-      test2: [
-        {
-          active: true,
-          value: 234,
-        },
-      ],
-    };
+  room.patchState([
+    { op: "replace", path: "/steps/1", value: true },
+    { op: "replace", path: "/synth/volume", value: 0.75 },
+  ]);
 
-    // apply patch
-    const s = room.getState();
-    const patch = getPatch(initialState, expected);
-    room.patchState(patch);
-
-    // assert patch worked
-    expect(s).toMatchObject(expected);
+  assertEquals(room.getState(), {
+    steps: [false, true],
+    synth: { volume: 0.75 },
   });
+});
 
-  test("patches nested properties", () => {
-    // setup
-    const initialState = {
-      bpm: 120,
-      samplePlayerParams: {
-        volume: 0.75,
-        sample: 0.84,
-        octave: 0.69,
-        filterCutoff: 0.5,
-        filterRes: 0,
-        filterEnvMod: 0,
-        attack: 0,
-        release: 0.3,
-      },
-      drumMachineParams: {
-        volume: 0.86,
-      },
-      synthSteps: [
-        {
-          active: false,
-          value: 0.5,
-        },
-        {
-          active: false,
-          value: 0.27,
-        },
-        {
-          active: false,
-          value: 0.39,
-        },
-        {
-          active: false,
-          value: 0.2,
-        },
-        {
-          active: true,
-          value: 0.53,
-        },
-        {
-          active: false,
-          value: 0.01,
-        },
-        {
-          active: true,
-          value: 0.15,
-        },
-        {
-          active: true,
-          value: 0.07,
-        },
-        {
-          active: false,
-          value: 0.01,
-        },
-        {
-          active: true,
-          value: 0.32,
-        },
-        {
-          active: true,
-          value: 0.71,
-        },
-        {
-          active: false,
-          value: 0.48,
-        },
-        {
-          active: true,
-          value: 0.01,
-        },
-        {
-          active: true,
-          value: 0.01,
-        },
-        {
-          active: false,
-          value: 0.93,
-        },
-        {
-          active: true,
-          value: 0,
-        },
-      ],
-      drumMachineSteps: [
-        [false, false, false, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-        [true, false, true, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-        [true, false, false, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-        [true, false, true, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-      ],
-    };
-    const room = new Room();
-    room.setState(initialState);
-    const expected = {
-      bpm: 120,
-      samplePlayerParams: {
-        volume: 0.75,
-        sample: 0.84,
-        octave: 0.69,
-        filterCutoff: 0.5,
-        filterRes: 0,
-        filterEnvMod: 0,
-        attack: 0,
-        release: 0.3,
-      },
-      drumMachineParams: {
-        volume: 0.86,
-      },
-      synthSteps: [
-        {
-          active: false,
-          value: 0.5,
-        },
-        {
-          active: false,
-          value: 0.27,
-        },
-        {
-          active: false,
-          value: 0.39,
-        },
-        {
-          active: false,
-          value: 0.2,
-        },
-        {
-          active: true,
-          value: 0.53,
-        },
-        {
-          active: false,
-          value: 0.01,
-        },
-        {
-          active: true,
-          value: 0.15,
-        },
-        {
-          active: true,
-          value: 0.07,
-        },
-        {
-          active: false,
-          value: 0.01,
-        },
-        {
-          active: true,
-          value: 0.32,
-        },
-        {
-          active: true,
-          value: 0.71,
-        },
-        {
-          active: false,
-          value: 0.48,
-        },
-        {
-          active: true,
-          value: 0.01,
-        },
-        {
-          active: true,
-          value: 0.01,
-        },
-        {
-          active: false,
-          value: 0.93,
-        },
-        {
-          active: true,
-          value: 0,
-        },
-      ],
-      drumMachineSteps: [
-        [true, false, false, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-        [true, false, true, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-        [true, false, false, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-        [true, false, true, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-        [false, false, false, false, false, false, false, false],
-      ],
-    };
+Deno.test("Room increments its revision for every accepted patch", () => {
+  const room = new Room();
+  room.setState({ count: 0 });
 
-    // apply patch
-    const s = room.getState();
-    const patch: Operation[] = [
-      { op: "replace", path: "/drumMachineSteps/0/0", value: true },
-    ];
-    room.patchState(patch);
+  room.patchState([{ op: "replace", path: "/count", value: 1 }]);
+  room.patchState([{ op: "replace", path: "/count", value: 2 }]);
 
-    // assert patch worked
-    expect(s).toMatchObject(expected);
-  });
+  assertEquals(room.getRevision(), 2);
+  assertEquals(room.getState(), { count: 2 });
 });

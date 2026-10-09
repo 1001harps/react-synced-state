@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef } from "npm:react@^18.3.1";
 
 export const useInstance = <T>(factory: () => T): T => {
   const instance = useRef<T | null>(null);

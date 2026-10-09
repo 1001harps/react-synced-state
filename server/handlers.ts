@@ -1,93 +1,221 @@
-import { randomUUID } from "crypto";
-import { IncomingMessage } from "http";
-import { WebSocket } from "ws";
-import { ServerAction, ServerEvent } from "../common";
-import { Connection } from "./types";
-import { Room } from "./room";
-import { Logger } from "winston";
+import { ClientMessage, JsonValue, ServerEvent } from "../common/index.ts";
+import { Room } from "./room.ts";
+import { Connection } from "./types.ts";
 
-export const handleWebSocketConnection = (
-  ws: WebSocket,
-  request: IncomingMessage,
-  logger: Logger,
-  connections: Connection[],
-  rooms: Record<string, Room>
-) => {
-  const params = new URLSearchParams(request.url?.split("?")[1]);
-  const metadata = params.get("metadata");
+export interface ServerOptions {
+  roomTtlMs?: number;
+  onRoomMembershipChange?: (roomId: string, members: number) => void;
+}
 
-  let roomId = params.get("roomId");
-  if (!roomId) throw "no roomId";
+const DEFAULT_ROOM_TTL_MS = 30 * 60 * 1000;
 
-  if (!(roomId in rooms)) {
-    rooms[roomId] = new Room();
-    if (params.has("initialState")) {
-      rooms[roomId].setState(JSON.parse(params.get("initialState")!));
-    }
-  } else {
-    const event: ServerEvent = {
-      type: "initial_state",
-      state: rooms[roomId].getState(),
-      metadata,
-    };
-
-    ws.send(JSON.stringify(event));
+const isJsonValue = (value: unknown): value is JsonValue => {
+  if (
+    value === null ||
+    typeof value === "boolean" ||
+    typeof value === "number" ||
+    typeof value === "string"
+  ) {
+    return true;
   }
 
-  const connectionId = randomUUID().toString();
-  const connection: Connection = {
-    id: connectionId,
-    roomId,
-    socket: ws,
-    metadata,
+  if (Array.isArray(value)) return value.every(isJsonValue);
+
+  if (typeof value !== "object") return false;
+  return Object.values(value as Record<string, unknown>).every(isJsonValue);
+};
+
+const isClientMessage = (value: unknown): value is ClientMessage => {
+  if (!value || typeof value !== "object" || !("type" in value)) return false;
+
+  const message = value as Record<string, unknown>;
+  if (message.type === "initialize") {
+    return isJsonValue(message.initialState) && isJsonValue(message.metadata);
+  }
+
+  return message.type === "state_change" && Array.isArray(message.patch);
+};
+
+const send = (socket: WebSocket, event: ServerEvent) => {
+  if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(event));
+};
+
+export const createHandler = (
+  options: ServerOptions = {},
+): (request: Request) => Response => {
+  const roomTtlMs = options.roomTtlMs ?? DEFAULT_ROOM_TTL_MS;
+  const rooms = new Map<string, Room>();
+  const connections = new Map<string, Connection>();
+
+  const notifyMembershipChange = (room: Room, roomId: string) => {
+    options.onRoomMembershipChange?.(roomId, room.members.size);
   };
-  connections.push(connection);
 
-  const connectionsWithKey = () =>
-    connections.filter((c) => c.roomId === roomId);
-
-  const dispatchToOthers = (event: ServerEvent) => {
-    connectionsWithKey().forEach((c) => {
-      // skip current connection
-      if (c.id === connectionId) return;
-
-      c.socket.send(JSON.stringify(event));
-    });
+  const broadcast = (room: Room, event: ServerEvent) => {
+    for (const connection of room.members) send(connection.socket, event);
   };
 
-  ws.on("error", logger.error);
+  const leave = (connection: Connection) => {
+    if (!connection.joined) return;
 
-  ws.on("message", function message(data) {
-    const message = JSON.parse(data.toString()) as ServerAction;
+    connection.joined = false;
+    const room = rooms.get(connection.roomId);
+    if (!room) return;
 
-    switch (message.type) {
-      case "state_change": {
-        if (!roomId) throw "missing key";
-
-        rooms[roomId].patchState(message.patch);
-
-        const event: ServerEvent = {
-          type: "state_change",
-          patch: message.patch,
-          metadata: metadata,
-        };
-
-        dispatchToOthers(event);
-
-        break;
-      }
-    }
-  });
-
-  ws.on("close", () => {
-    dispatchToOthers({
+    room.members.delete(connection);
+    notifyMembershipChange(room, connection.roomId);
+    broadcast(room, {
       type: "left",
-      metadata,
+      connectionId: connection.id,
+      metadata: connection.metadata,
     });
-  });
 
-  dispatchToOthers({
-    type: "joined",
-    metadata,
-  });
+    if (room.members.size === 0) {
+      room.expireAfter(roomTtlMs, () => {
+        if (room.members.size === 0) rooms.delete(connection.roomId);
+      });
+    }
+  };
+
+  const join = (
+    connection: Connection,
+    initialState: JsonValue,
+    metadata: JsonValue,
+  ) => {
+    let room = rooms.get(connection.roomId);
+    if (!room) {
+      room = new Room();
+      rooms.set(connection.roomId, room);
+    }
+
+    connection.metadata = metadata;
+    room.cancelExpiry();
+
+    if (!room.isInitialized()) room.setState(initialState);
+
+    room.members.add(connection);
+    connection.joined = true;
+    notifyMembershipChange(room, connection.roomId);
+
+    send(connection.socket, {
+      type: "initial_state",
+      state: room.getState(),
+      revision: room.getRevision(),
+      connectionId: connection.id,
+      members: [...room.members].map((member) => ({
+        connectionId: member.id,
+        metadata: member.metadata,
+      })),
+    });
+
+    for (const member of room.members) {
+      if (member.id === connection.id) continue;
+      send(member.socket, {
+        type: "joined",
+        connectionId: connection.id,
+        metadata,
+      });
+    }
+  };
+
+  return (request: Request): Response => {
+    const url = new URL(request.url);
+
+    if (request.method === "GET" && url.pathname === "/health") {
+      return Response.json({ ok: true });
+    }
+
+    if (request.headers.get("upgrade") !== "websocket") {
+      return new Response("This endpoint expects a WebSocket", { status: 426 });
+    }
+
+    const roomId = url.searchParams.get("roomId");
+    if (!roomId) return new Response("Missing roomId", { status: 400 });
+
+    const { socket, response } = Deno.upgradeWebSocket(request);
+    const connection: Connection = {
+      id: crypto.randomUUID(),
+      socket,
+      roomId,
+      metadata: null,
+      joined: false,
+    };
+
+    socket.onopen = () => {
+      connections.set(connection.id, connection);
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        const message = JSON.parse(String(event.data)) as unknown;
+        if (!isClientMessage(message)) {
+          send(socket, { type: "error", message: "Invalid client message" });
+          return;
+        }
+
+        if (message.type === "initialize") {
+          if (connection.joined) {
+            send(socket, { type: "error", message: "Already initialized" });
+            return;
+          }
+          join(connection, message.initialState, message.metadata);
+          return;
+        }
+
+        if (!connection.joined) {
+          send(socket, {
+            type: "error",
+            message: "Initialize before updating state",
+          });
+          return;
+        }
+
+        const room = rooms.get(connection.roomId);
+        if (!room) {
+          send(socket, { type: "error", message: "Room no longer exists" });
+          return;
+        }
+
+        try {
+          room.patchState(message.patch);
+        } catch {
+          send(socket, {
+            type: "error",
+            message: "Unable to apply state patch",
+          });
+          send(socket, {
+            type: "state",
+            state: room.getState(),
+            revision: room.getRevision(),
+            originConnectionId: connection.id,
+            metadata: connection.metadata,
+          });
+          return;
+        }
+
+        broadcast(room, {
+          type: "state",
+          state: room.getState(),
+          revision: room.getRevision(),
+          originConnectionId: connection.id,
+          metadata: connection.metadata,
+        });
+      } catch {
+        send(socket, {
+          type: "error",
+          message: "Unable to read client message",
+        });
+      }
+    };
+
+    const disconnect = () => {
+      connections.delete(connection.id);
+      leave(connection);
+    };
+
+    socket.onclose = disconnect;
+    socket.onerror = disconnect;
+
+    return response;
+  };
 };
