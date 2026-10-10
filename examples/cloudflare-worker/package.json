@@ -1,0 +1,11 @@
+{
+  "name": "react-synced-state-cloudflare-example",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@9h/react-synced-state": "npm:@jsr/9h__react-synced-state@^0.4.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.149.0"
+  }
+}

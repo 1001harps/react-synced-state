@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "react-synced-state-example",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-09",
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SYNC_ROOMS",
+        "class_name": "SyncedRoom",
+      },
+    ],
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["SyncedRoom"],
+    },
+  ],
+  // Optional: override the 30 minute room TTL.
+  // "vars": {
+  //   "ROOM_TTL_MS": "1800000",
+  // },
+}

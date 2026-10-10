@@ -1,0 +1,29 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "react-synced-state-dev",
+  "main": "cloudflare/index.ts",
+  "compatibility_date": "2026-10-09",
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SYNC_ROOMS",
+        "class_name": "SyncedRoom",
+      },
+    ],
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["SyncedRoom"],
+    },
+  ],
+  // Deno-style npm specifiers are rewritten on publish. This alias lets
+  // Wrangler build the repo-local source directly.
+  "alias": {
+    "npm:fast-json-patch@^3.1.1/index.mjs": "./node_modules/fast-json-patch/index.mjs",
+  },
+  // Optional: override the 30 minute room TTL while testing.
+  // "vars": {
+  //   "ROOM_TTL_MS": "300000",
+  // },
+}
