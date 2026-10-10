@@ -42,9 +42,13 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
+        "npm:@cloudflare/vitest-plugin@^1.4.0",
+        "npm:@cloudflare/workers-types@^5.20261009.1",
         "npm:@types/react@^18.3.3",
         "npm:fast-json-patch@^3.1.1",
-        "npm:react@^18.3.1"
+        "npm:react@^18.3.1",
+        "npm:vitest@^5.0.3",
+        "npm:wrangler@^4.149.0"
       ]
     }
   }

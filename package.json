@@ -1,9 +1,19 @@
 {
+  "type": "module",
+  "scripts": {
+    "test": "deno test --allow-net && vitest run",
+    "test:deno": "deno test --allow-net",
+    "test:cloudflare": "vitest run"
+  },
   "dependencies": {
+    "@cloudflare/workers-types": "^5.20261009.1",
     "fast-json-patch": "^3.1.1",
     "react": "^18.3.1"
   },
   "devDependencies": {
-    "@types/react": "^18.3.3"
+    "@cloudflare/vitest-plugin": "^1.4.0",
+    "@types/react": "^18.3.3",
+    "vitest": "^5.0.3",
+    "wrangler": "^4.149.0"
   }
 }

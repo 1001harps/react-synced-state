@@ -1,9 +1,22 @@
 {
   "name": "@9h/react-synced-state",
-  "version": "0.3.1",
+  "version": "0.5.0",
   "exports": {
     ".": "./common/index.ts",
     "./server": "./server/index.ts",
-    "./hooks": "./hooks/index.ts"
+    "./hooks": "./hooks/index.ts",
+    "./cloudflare": "./cloudflare/index.ts"
+  },
+  "publish": {
+    "exclude": [
+      "**/*.test.ts",
+      "**/*.spec.ts",
+      "test",
+      "scripts",
+      "vitest.config.ts",
+      "wrangler.jsonc",
+      "wrangler.deploy.jsonc",
+      "examples"
+    ]
   }
 }

@@ -1,4 +1,5 @@
-import { ClientMessage, JsonValue, ServerEvent } from "../common/index.ts";
+import { JsonValue, ServerEvent } from "../common/index.ts";
+import { DEFAULT_ROOM_TTL_MS, isClientMessage } from "../common/validation.ts";
 import { Room } from "./room.ts";
 import { Connection } from "./types.ts";
 
@@ -7,35 +8,6 @@ export interface ServerOptions {
   roomTtlMs?: number;
   onRoomMembershipChange?: (roomId: string, members: number) => void;
 }
-
-const DEFAULT_ROOM_TTL_MS = 30 * 60 * 1000;
-
-const isJsonValue = (value: unknown): value is JsonValue => {
-  if (
-    value === null ||
-    typeof value === "boolean" ||
-    typeof value === "number" ||
-    typeof value === "string"
-  ) {
-    return true;
-  }
-
-  if (Array.isArray(value)) return value.every(isJsonValue);
-
-  if (typeof value !== "object") return false;
-  return Object.values(value as Record<string, unknown>).every(isJsonValue);
-};
-
-const isClientMessage = (value: unknown): value is ClientMessage => {
-  if (!value || typeof value !== "object" || !("type" in value)) return false;
-
-  const message = value as Record<string, unknown>;
-  if (message.type === "initialize") {
-    return isJsonValue(message.initialState) && isJsonValue(message.metadata);
-  }
-
-  return message.type === "state_change" && Array.isArray(message.patch);
-};
 
 const send = (socket: WebSocket, event: ServerEvent) => {
   if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(event));
